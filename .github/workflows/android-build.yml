@@ -1,0 +1,143 @@
+name: Build Android APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-action@stable
+        with:
+          targets: aarch64-linux-android
+          components: rustfmt, clippy
+      
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          cmd-line-tools-version: 9.0
+          platforms: android-34
+          build-tools: 34.0.0
+      
+      - name: Install dependencies
+        run: |
+          npm ci
+          rustup target add aarch64-linux-android
+          rustup target add x86_64-linux-android
+      
+      - name: Build Rust backend
+        run: |
+          cd src-tauri
+          cargo build --release --target aarch64-linux-android
+      
+      - name: Build Android APK
+        run: cargo tauri android build --release
+      
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pure-live-rust-android-arm64
+          path: src-tauri/target/aarch64-linux-android/release/*.apk
+          retention-days: 30
+      
+      - name: Upload x86_64 APK (for emulator)
+        if: github.event_name == 'workflow_dispatch'
+        run: cargo tauri android build --release --target x86_64-linux-android
+      
+      - name: Upload x86_64 APK artifact
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pure-live-rust-android-x86_64
+          path: src-tauri/target/x86_64-linux-android/release/*.apk
+          retention-days: 30
+      
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            src-tauri/target/aarch64-linux-android/release/*.apk
+            src-tauri/target/x86_64-linux-android/release/*.apk
+          generate_release_notes: true
+          draft: true
+
+  build-web:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build web version
+        run: npm run build
+      
+      - name: Upload web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: pure-live-rust-web
+          path: dist/
+          retention-days: 30
+
+  build-macos:
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-action@stable
+      
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build macOS app
+        run: cargo tauri build
+      
+      - name: Upload macOS app
+        uses: actions/upload-artifact@v4
+        with:
+          name: pure-live-rust-macos
+          path: src-tauri/target/release/bundle/macos/*.app
+          retention-days: 30
