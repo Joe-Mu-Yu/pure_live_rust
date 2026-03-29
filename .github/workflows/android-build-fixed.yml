@@ -1,0 +1,58 @@
+name: Android APK Build
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-action@stable
+        with:
+          targets: aarch64-linux-android
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Setup Android
+        uses: android-actions/setup-android@v3
+      
+      - name: Accept licenses
+        run: yes | sdkmanager --licenses || true
+      
+      - name: Install deps
+        run: |
+          npm ci
+          rustup target add aarch64-linux-android
+      
+      - name: Build frontend
+        run: npm run build
+      
+      - name: Build APK
+        run: cargo tauri android build
+      
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: pure-live-rust-apk
+          path: |
+            src-tauri/target/aarch64-linux-android/debug/**/*.apk
+            src-tauri/target/gradle-build/build/**/*.apk
+          retention-days: 7
