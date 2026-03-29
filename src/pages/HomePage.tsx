@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import '../styles/neumorphism.css'
 import './HomePage.css'
 
@@ -21,7 +21,7 @@ const platforms = [
 function HomePage() {
   const [selectedPlatform, setSelectedPlatform] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [liveRooms, setLiveRooms] = useState(mockLiveRooms)
+  const [liveRooms] = useState(mockLiveRooms)
   const [isDarkMode, setIsDarkMode] = useState(false)
 
   // 切换深色模式
@@ -131,7 +131,7 @@ function HomePage() {
 }
 
 // 直播间卡片组件
-function LiveRoomCard({ room }) {
+function LiveRoomCard({ room }: { room: typeof mockLiveRooms[0] }) {
   const [isHovered, setIsHovered] = useState(false)
 
   const siteIcons: Record<string, string> = {
