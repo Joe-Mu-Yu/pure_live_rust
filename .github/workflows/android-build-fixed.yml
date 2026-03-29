@@ -46,7 +46,16 @@ jobs:
         run: npm run build
       
       - name: Build APK
-        run: cargo tauri android build
+        run: |
+          echo "=== Starting Android build ==="
+          echo "Current directory: $(pwd)"
+          echo "Node version: $(node -v)"
+          echo "Rust version: $(rustc --version)"
+          echo "Java version: $(java -version 2>&1)"
+          echo "ANDROID_HOME: $ANDROID_HOME"
+          echo "ANDROID_NDK: $ANDROID_NDK"
+          cargo tauri android build 2>&1 | tee build.log
+          echo "=== Build completed ==="
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
